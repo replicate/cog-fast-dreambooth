@@ -14,15 +14,22 @@ build:
   python_version: "3.8"
 
   # a list of packages in the format <package-name>==<version>
-  # python_packages:
-    # - "numpy==1.19.4"
-    # - "torch==1.8.0"
-    # - "torchvision==0.9.0"
+  python_packages:
+    - "accelerate==0.12.0"
+    - "torch==1.13.1"
+    - "diffusers==0.13.1"
+    - "pillow"
+    - "torchvision"
+    - "transformers"
   
   # commands run after the environment is setup
-  # run:
-    # - "echo env is ready!"
-    # - "echo another command if needed"
+  run:
+    - "apt install git"
+    - "curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | bash"
+    - "apt-get install git-lfs"
+    - "git lfs install --system --skip-repo"
+    - "pip install transformers"
+    - "git clone --depth 1 --branch updt git@github.com:TheLastBen/diffusers.git"
 
 # predict.py defines how predictions are run on your model
 predict: "predict.py:Predictor"
