@@ -38,7 +38,7 @@ Text_Encoder_Training_Steps=350 #@param{type: 'number'}
 # 200-450 steps is enough for a small dataset, keep this number small to avoid overfitting, set to 0 to disable, 
 # `set it to 0 before resuming training if it is already trained`.
 
-Text_Encoder_Concept_Training_Steps=0
+Text_Encoder_Concept_Training_Steps=200
 # Suitable for training a style/concept as it acts as heavy regularization, set it to 1500 steps 
 # for 200 concept images (you can go higher), set to 0 to disable, set both the settings 
 # above to 0 to fintune only the text_encoder on the concept, 
@@ -159,7 +159,7 @@ Disconnect_after_training=False #@param {type:"boolean"}
 #@markdown - Auto-disconnect from google colab after the training to avoid wasting compute units.
 
 def dump_only_textenc(trnonltxt, MODELT_NAME, INSTANCE_DIR, OUTPUT_DIR, PT, Seed, precision, Training_Steps):
-    launch_command = f"accelerate launch /content/diffusers/examples/dreambooth/train_dreambooth.py \
+    launch_command = f"accelerate launch /src/diffusers/examples/dreambooth/train_dreambooth.py \
         {trnonltxt} {extrnlcptn} {ofstnse} --image_captions_filename --train_text_encoder --dump_only_text_encoder  --pretrained_model_name_or_path={MODELT_NAME} \
         --instance_data_dir={INSTANCE_DIR} --output_dir={OUTPUT_DIR} --instance_prompt={PT} --seed={Seed} --resolution=512 \
         --mixed_precision={precision} --train_batch_size=1 --gradient_accumulation_steps=1 --learning_rate={txlr} \
@@ -190,12 +190,12 @@ def dump_only_textenc(trnonltxt, MODELT_NAME, INSTANCE_DIR, OUTPUT_DIR, PT, Seed
 
 def train_only_unet(stpsv, stp, SESSION_DIR, MODELT_NAME, INSTANCE_DIR, OUTPUT_DIR, PT, Seed, Res, precision, Training_Steps):
     print('Training Unet only...')
-    launch_command = f"accelerate launch /content/diffusers/examples/dreambooth/train_dreambooth.py \
+    launch_command = f"accelerate launch /src/diffusers/examples/dreambooth/train_dreambooth.py \
         {Style} {extrnlcptn} {ofstnse} --image_captions_filename --train_only_unet --save_starting_step={stpsv} \
         --save_n_steps={stp} --Session_dir={SESSION_DIR} --pretrained_model_name_or_path={MODELT_NAME} \
         --instance_data_dir={INSTANCE_DIR} --output_dir={OUTPUT_DIR} --captions_dir={CAPTIONS_DIR} --instance_prompt={PT} \
         --seed={Seed} --resolution={Res} --mixed_precision={precision} --train_batch_size=1 \
-        --gradient_accumulation_steps=1 --learning_rate={lr} --lr_scheduler=linear --lr_warmup_steps=0 \
+        --gradient_accumulation_steps=1 --learning_rate={untlr} --lr_scheduler=linear --lr_warmup_steps=0 \
         --max_train_steps={Training_Steps}"
     os.system(launch_command)
     # !accelerate launch /content/diffusers/examples/dreambooth/train_dreambooth.py \
@@ -223,14 +223,15 @@ def train_only_unet(stpsv, stp, SESSION_DIR, MODELT_NAME, INSTANCE_DIR, OUTPUT_D
     # --lr_warmup_steps=0 \
     # --max_train_steps=$Training_Steps
 
-Session_Name="test_dreambooth"
+Session_Name="test_db/test_dan"
 
 INSTANCE_NAME=Session_Name
-OUTPUT_DIR="/content/models/"+Session_Name
-SESSION_DIR="src/Sessions/"+Session_Name
-INSTANCE_DIR=SESSION_DIR+'/instance_images'
-CONCEPT_DIR=SESSION_DIR+'/concept_images'
-CAPTIONS_DIR=SESSION_DIR+'/captions'
+OUTPUT_DIR=os.path.join("/src/outputs/",Session_Name,str(time.time()))
+os.makedirs(OUTPUT_DIR, exist_ok=True)
+SESSION_DIR=os.path.join("/src",Session_Name)
+INSTANCE_DIR=os.path.join(SESSION_DIR,'instance_images')
+CONCEPT_DIR=os.path.join(SESSION_DIR, 'concept_images')
+CAPTIONS_DIR=os.path.join(SESSION_DIR, 'captions')
 MDLPTH=str(SESSION_DIR+"/"+Session_Name+'.ckpt')
 
 INSTANCE_DIR # where are the images of the target
@@ -273,19 +274,23 @@ if UNet_Training_Steps==0 and Text_Encoder_Concept_Training_Steps==0 and Text_En
   print('[1;32mNothing to do')
 else:
   # and here's where we convert the model to a ckpt. 
-  if os.path.exists('/content/models/'+INSTANCE_NAME+'/unet/diffusion_pytorch_model.bin'):
+  path_to_test = os.path.join(OUTPUT_DIR,'unet/diffusion_pytorch_model.bin')
+  print(f"checking {path_to_test}")
+  if os.path.exists(path_to_test):
+    print('found it')
     prc="--fp16" if precision=="fp16" else ""
-    save_command = f"python /content/diffusers/scripts/convertosdv2.py {prc} {OUTPUT_DIR} {SESSION_DIR}/{Session_Name}.ckpt"
+    save_command = f"python /src/diffusers/scripts/convertosdv2.py {prc} {OUTPUT_DIR} {SESSION_DIR}/{Session_Name}.ckpt"
     os.system(save_command)
     # !python /content/diffusers/scripts/convertosdv2.py $prc $OUTPUT_DIR $SESSION_DIR/$Session_Name".ckpt"
     # clear_output()
-    if os.path.exists(SESSION_DIR+"/"+INSTANCE_NAME+'.ckpt'):
+    if os.path.exists(os.path.join(SESSION_DIR, (INSTANCE_NAME+'.ckpt'))):
       #clear_output()
       print("Done and saved the CKPT model is in your Gdrive in the sessions folder")
     #   if Disconnect_after_training :
     #     time.sleep(20)
     #     runtime.unassign()
     else:
-      print("oh no something went wrong")
+      print("failed to save the ckpt")
   else:
+    print(f"couldn't find anyting at {path_to_test}")
     print("oh nooo something went wrong")
